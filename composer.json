@@ -1,0 +1,14 @@
+{
+  "name": "gcgov/json-deserialize",
+  "description": "PHP Utility to add automated jsonDeserialize to models",
+  "license": "MIT",
+  "autoload": {
+	"psr-4": {
+	  "gcgov\\jsonDeserialize\\": "src/"
+	}
+  },
+  "require": {
+	"php": ">=8.0",
+	"mongodb/mongodb": "^1.8"
+  }
+}
