@@ -1,12 +1,12 @@
 <?php
-namespace gcgov\jsonDeserialize;
-use gcgov\jsonDeserialize\attributes\excludeJsonDeserialize;
-use gcgov\jsonDeserialize\exceptions\jsonDeserializeException;
+namespace andrewsauder\jsonDeserialize;
+use andrewsauder\jsonDeserialize\attributes\excludeJsonDeserialize;
+use andrewsauder\jsonDeserialize\exceptions\jsonDeserializeException;
 
 
 abstract class jsonDeserialize
 	implements
-	\gcgov\jsonDeserialize\interfaces\jsonDeserialize {
+	\andrewsauder\jsonDeserialize\interfaces\jsonDeserialize {
 
 	/**
 	 * Initialize from outside object
@@ -14,7 +14,7 @@ abstract class jsonDeserialize
 	 * @param  string|\stdClass  $json
 	 *
 	 * @return mixed Instance of the called class
-	 * @throws \gcgov\jsonDeserialize\exceptions\jsonDeserializeException
+	 * @throws \andrewsauder\jsonDeserialize\exceptions\jsonDeserializeException
 	 */
 	public static function jsonDeserialize( string|\stdClass $json ) : mixed {
 		$calledClassFqn = self::classNameToFqn( get_called_class() );
@@ -44,7 +44,7 @@ abstract class jsonDeserialize
 
 
 	/**
-	 * @throws \gcgov\jsonDeserialize\exceptions\jsonDeserializeException
+	 * @throws \andrewsauder\jsonDeserialize\exceptions\jsonDeserializeException
 	 */
 	private static function jsonDeserializeObject( string $calledClassFqn, \stdClass $json ) {
 		//load new instance of this class
@@ -109,7 +109,7 @@ abstract class jsonDeserialize
 	 * @param  boolean              $allowsNull  Can the property be set to null
 	 *
 	 * @return mixed
-	 * @throws \gcgov\jsonDeserialize\exceptions\jsonDeserializeException
+	 * @throws \andrewsauder\jsonDeserialize\exceptions\jsonDeserializeException
 	 */
 	private static function jsonDeserializeDataItem( mixed $instance, \ReflectionProperty $rProperty, mixed $jsonValue, bool $allowsNull ) : mixed {
 		$propertyName     = $rProperty->getName();
@@ -126,7 +126,7 @@ abstract class jsonDeserialize
 		try {
 			$rPropertyClass = new \ReflectionClass( $propertyTypeName );
 		}
-			//regular non class types
+		//regular non-class types
 		catch( \ReflectionException $e ) {
 			if( $jsonValue !== null ) {
 				if( $propertyTypeName == 'array' ) {
@@ -158,27 +158,15 @@ abstract class jsonDeserialize
 				throw new jsonDeserializeException( 'Failed to instantiate type ' . $propertyTypeName . ' for ' . $errorMessageDataPosition, 500, $e );
 			}
 		}
+
 		//no value provided, nulls allowed - use the default instantiated value
 		elseif( empty( $jsonValue ) && $allowsNull ) {
 			//return default value
 			return $rProperty->getValue( $instance );
 		}
 
-		//mongo object ids
-		if( trim( $propertyTypeName, '\\' ) == trim( \MongoDB\BSON\ObjectId::class, '\\' ) ) {
-			try {
-				return $rPropertyClass->newInstance( $jsonValue );
-			}
-			catch( \MongoDB\Driver\Exception\InvalidArgumentException $e ) {
-				throw new jsonDeserializeException( 'Invalid id provided for ' . $errorMessageDataPosition, 400, $e );
-			}
-			catch( \ReflectionException $e ) {
-				throw new jsonDeserializeException( 'Failed to instantiate type ' . $propertyTypeName . ' for ' . $errorMessageDataPosition, 500, $e );
-			}
-		}
-
 		//implementers of jsonDeserialize
-		elseif( $rPropertyClass->implementsInterface( \gcgov\jsonDeserialize\interfaces\jsonDeserialize::class ) ) {
+		elseif( $rPropertyClass->implementsInterface( \andrewsauder\jsonDeserialize\interfaces\jsonDeserialize::class ) ) {
 			try {
 				$method           = $rPropertyClass->getMethod( 'jsonDeserialize' );
 				$tempTypeInstance = $rPropertyClass->newInstanceWithoutConstructor();
@@ -190,8 +178,8 @@ abstract class jsonDeserialize
 			}
 		}
 
-		//datetimes
-		elseif( $rPropertyClass->implementsInterface( \DateTimeInterface::class ) ) {
+		//value provided
+		else {
 			try {
 				return $rPropertyClass->newInstance( $jsonValue );
 			}
@@ -203,8 +191,6 @@ abstract class jsonDeserialize
 			}
 		}
 
-		//error out if we don't know how to handle
-		throw new jsonDeserializeException( 'Missing type to parse in json deserialize: ' . $propertyTypeName );
 	}
 
 

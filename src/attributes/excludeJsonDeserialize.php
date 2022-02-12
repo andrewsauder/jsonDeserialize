@@ -1,6 +1,6 @@
 <?php
 
-namespace gcgov\jsonDeserialize\attributes;
+namespace andrewsauder\jsonDeserialize\attributes;
 
 
 use Attribute;

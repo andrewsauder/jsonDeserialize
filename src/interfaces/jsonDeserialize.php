@@ -1,7 +1,7 @@
 <?php
 
 
-namespace gcgov\jsonDeserialize\interfaces;
+namespace andrewsauder\jsonDeserialize\interfaces;
 
 
 interface jsonDeserialize {

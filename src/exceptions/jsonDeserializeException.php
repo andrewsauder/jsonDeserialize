@@ -1,5 +1,5 @@
 <?php
-namespace gcgov\jsonDeserialize\exceptions;
+namespace andrewsauder\jsonDeserialize\exceptions;
 
 
 class jsonDeserializeException extends \Exception {
