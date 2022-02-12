@@ -25,7 +25,7 @@ abstract class jsonDeserialize
 				$json = json_decode( $json, false, 512, JSON_THROW_ON_ERROR );
 			}
 			catch( \JsonException $e ) {
-				throw new jsonDeserializeException( 'Malformed JSON', 400, $e );
+				throw new jsonDeserializeException( 'Malformed JSON '.$calledClassFqn, 400, $e );
 			}
 		}
 
@@ -76,6 +76,11 @@ abstract class jsonDeserialize
 
 			//get the type of this property
 			$rPropertyType = $rProperty->getType();
+
+			if(!isset($rPropertyType)) {
+				error_log($rProperty->class.'->'.$propertyName.' does not have a type. Its value will not be preserved.');
+				continue;
+			}
 
 			//if the property is an array, check if the doc comment defines the type
 			$propertyIsTypedArray = false;
