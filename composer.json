@@ -1,10 +1,10 @@
 {
-  "name": "gcgov/json-deserialize",
-  "description": "PHP Utility to add automated jsonDeserialize to models",
+  "name": "andrewsauder/json-deserialize",
+  "description": "PHP Utility to add automated json deserialize into typed objects",
   "license": "MIT",
   "autoload": {
 	"psr-4": {
-	  "gcgov\\jsonDeserialize\\": "src/"
+	  "andrewsauder\\jsonDeserialize\\": "src/"
 	}
   },
   "require": {
