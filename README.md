@@ -1,7 +1,5 @@
 # Json Deserialize Utility
-JSON Deserialize is an abstract class that enables JSON deserialization into a specific class. 
-
-Simply extend the jsonDeserialize class and then call the static jsonDeserialize method
+JSON Deserialize is an abstract class that enables JSON deserialization into a specific class. Simply extend the jsonDeserialize class and then call the static jsonDeserialize method. Requires all properties to be typed. Array type will be determined by a PHPDoc definition.
 
 Requires &gt;=PHP 8
 
@@ -11,9 +9,15 @@ myModel.php
 /** @method myModel static jsonDeserialize() */
 class myModel extends \andrewsauder\jsonDeserialize\jsonDeserialize {
 
-	public string $varA = '';
+	public int $varA = 1;
+	
 	public string $varB = '';
 	
+	#[excludeJsonDeserialize]
+	public string $varC = 'not deserialized';
+	
+	/** @var string[]  */
+	public array $varD = '';
 }
 ```
 
@@ -23,12 +27,19 @@ class myController {
     
     public function post() {
         
-        $jsonString = '{ "varA":"A", "varB":"B" }';
+        $jsonString = '{ "varA":"A", "varB":"B", "varC":"C", "varD":[ "D1", "D2", "D3" ] }';
         $myModel = myModel::jsonDeserialize( $jsonString );
         
         echo $myModel->varA;
         echo "\n";
         echo $myModel->varB;
+        echo "\n";
+        echo $myModel->varC;
+	foreach( $myModel->varD as $i=>$v) {
+		echo "\n";
+        	echo $myModel->varD[ $i ];
+	}
+      
     }
     
 }
@@ -38,4 +49,8 @@ Output:
 ```
 A
 B
+not deserialized
+D1
+D2
+D3
 ```
