@@ -35,12 +35,9 @@ class myController {
         $myModel = myModel::jsonDeserialize( $jsonString );
         
         echo $myModel->varA;
-        echo "\n";
         echo $myModel->varB;
-        echo "\n";
         echo $myModel->varC;
 	foreach( $myModel->varD as $i=>$v) {
-		echo "\n";
         	echo $myModel->varD[ $i ];
 	}
       
