@@ -1,4 +1,5 @@
 # Json Deserialize Utility
+
 JSON Deserialize is an abstract class that enables JSON deserialization into a specific class. Simply extend the jsonDeserialize class and then call the static jsonDeserialize method. Requires all properties to be typed. Array type will be determined by a PHPDoc definition.
 
 Requires &gt;=PHP 8
