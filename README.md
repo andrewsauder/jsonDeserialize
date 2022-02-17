@@ -4,6 +4,9 @@ JSON Deserialize is an abstract class that enables JSON deserialization into a s
 
 Requires &gt;=PHP 8
 
+## Installation
+`composer require andrewsauder\json-deserialize`
+
 ## Usage
 myModel.php
 ```php
