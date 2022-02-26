@@ -69,3 +69,16 @@ To enable debug logging (useful for determining missing properties), run these t
 \andrewsauder\jsonDeserialize\config::setDebugLogging( true );
 \andrewsauder\jsonDeserialize\config::setDebugLogPath( 'C:/inetpub/logs' );
 ```
+
+###Fine Tune Logging
+By default, when logging is enabled, all debugging messages are enabled.
+
+- To turn off messages about properties that exist in the class but do not exist in the JSON source:
+  `\andrewsauder\jsonDeserialize\config::setLogJsonMissingProperty( true ); `
+
+- To turn off messages about properties that exist in the JSON source but do not exist in the class:
+  `\andrewsauder\jsonDeserialize\config::setLogClassMissingProperty( true ); `
+
+- To turn off messages about properties in the class without a strict type:
+  `\andrewsauder\jsonDeserialize\config::setLogClassPropertyMissingType( true ); `
+
