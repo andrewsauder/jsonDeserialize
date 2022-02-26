@@ -8,6 +8,13 @@ abstract class jsonDeserialize
 	implements
 	\andrewsauder\jsonDeserialize\interfaces\jsonDeserialize {
 
+
+	private static function jsonDeserializeLog( string $message, array $context=[] ) {
+		if( config::isDebugLogging() ) {
+			config::getDebugLogger()->debug( $message, $context );
+		}
+	}
+
 	/**
 	 * Initialize from outside object
 	 *
@@ -59,6 +66,14 @@ abstract class jsonDeserialize
 		//get properties of the class
 		$rProperties = $rClass->getProperties();
 
+		//get the fields not defined on the class
+		foreach($json as $key=>$value) {
+			if(!$rClass->hasProperty($key)) {
+				self::jsonDeserializeLog($calledClassFqn.'->'.$key.' is not defined on the class. Value will be injected in class with standard JSON decode types.');
+				$instance->$key = $value;
+			}
+		}
+
 		//load data from $json into the class $instance
 		foreach( $rProperties as $rProperty ) {
 			$propertyName = $rProperty->getName();
@@ -71,6 +86,7 @@ abstract class jsonDeserialize
 
 			//if there is not a matching json property, ignore it
 			if( !property_exists( $json, $propertyName ) ) {
+				self::jsonDeserializeLog($rProperty->class.'->'.$propertyName.' is not defined in the json');
 				continue;
 			}
 
@@ -78,7 +94,7 @@ abstract class jsonDeserialize
 			$rPropertyType = $rProperty->getType();
 
 			if(!isset($rPropertyType)) {
-				error_log($rProperty->class.'->'.$propertyName.' does not have a type. Its value will not be preserved.');
+				self::jsonDeserializeLog($rProperty->class.'->'.$propertyName.' does not have a type. Its value will not be preserved.');
 				continue;
 			}
 
