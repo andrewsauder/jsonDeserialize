@@ -69,7 +69,9 @@ abstract class jsonDeserialize
 		//get the fields not defined on the class
 		foreach($json as $key=>$value) {
 			if(!$rClass->hasProperty($key)) {
-				self::jsonDeserializeLog($calledClassFqn.'->'.$key.' is not defined on the class. Value will be injected in class with standard JSON decode types.');
+				if( config::isDebugLogging() && config::isLogClassMissingProperty() ) {
+					config::getDebugLogger()->debug( $calledClassFqn.'->'.$key.' is not defined on the class. Value will be injected in class with standard JSON decode types.' );
+				}
 				$instance->$key = $value;
 			}
 		}
@@ -86,7 +88,9 @@ abstract class jsonDeserialize
 
 			//if there is not a matching json property, ignore it
 			if( !property_exists( $json, $propertyName ) ) {
-				self::jsonDeserializeLog($rProperty->class.'->'.$propertyName.' is not defined in the json');
+				if( config::isDebugLogging() && config::isLogJsonMissingProperty() ) {
+					config::getDebugLogger()->debug( $rProperty->class.'->'.$propertyName.' not defined JSON source data' );
+				}
 				continue;
 			}
 
@@ -94,7 +98,10 @@ abstract class jsonDeserialize
 			$rPropertyType = $rProperty->getType();
 
 			if(!isset($rPropertyType)) {
-				self::jsonDeserializeLog($rProperty->class.'->'.$propertyName.' does not have a type. Its value will not be preserved.');
+				if( config::isDebugLogging() && config::isLogClassPropertyMissingType() ) {
+					config::getDebugLogger()->debug( $rProperty->class.'->'.$propertyName.' does not have a type defined. Value will be injected in class with standard JSON decode types.' );
+				}
+				$instance->$propertyName = $json->$propertyName;
 				continue;
 			}
 

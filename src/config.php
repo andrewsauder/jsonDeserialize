@@ -5,13 +5,22 @@ namespace andrewsauder\jsonDeserialize;
 
 class config {
 
-	private static bool   $debugLogging = false;
+	private static bool            $debugLogging               = false;
 
-	private static string $debugLogPath = '';
+	private static bool            $logJsonMissingProperty      = true;
 
-	private static string $debugLogChannel = 'andrewsauder.jsonDeserialize';
-	private static string $debugLogFilePath = '';
+	private static bool            $logClassPropertyMissingType = true;
+
+	private static bool            $logClassMissingProperty     = true;
+
+	private static string          $debugLogPath               = '';
+
+	private static string          $debugLogChannel            = 'andrewsauder.jsonDeserialize';
+
+	private static string          $debugLogFilePath           = '';
+
 	private static \Monolog\Logger $debugLogger;
+
 
 	/**
 	 * @return bool
@@ -41,7 +50,7 @@ class config {
 	 * @param  string  $debugLogPath
 	 */
 	public static function setDebugLogPath( string $debugLogPath ) : void {
-		self::$debugLogPath = trim( $debugLogPath, '/\\' );
+		self::$debugLogPath     = trim( $debugLogPath, '/\\' );
 		self::$debugLogFilePath = self::$debugLogPath . '/' . self::getDebugLogChannel() . '.log';
 	}
 
@@ -55,9 +64,57 @@ class config {
 
 
 	/**
+	 * @return bool
+	 */
+	public static function isLogJsonMissingProperty() : bool {
+		return self::$logJsonMissingProperty;
+	}
+
+
+	/**
+	 * @param  bool  $logJsonMissingProperty
+	 */
+	public static function setLogJsonMissingProperty( bool $logJsonMissingProperty ) : void {
+		self::$logJsonMissingProperty = $logJsonMissingProperty;
+	}
+
+
+	/**
+	 * @return bool
+	 */
+	public static function isLogClassPropertyMissingType() : bool {
+		return self::$logClassPropertyMissingType;
+	}
+
+
+	/**
+	 * @param  bool  $logClassPropertyMissingType
+	 */
+	public static function setLogClassPropertyMissingType( bool $logClassPropertyMissingType ) : void {
+		self::$logClassPropertyMissingType = $logClassPropertyMissingType;
+	}
+
+
+	/**
+	 * @return bool
+	 */
+	public static function isLogClassMissingProperty() : bool {
+		return self::$logClassMissingProperty;
+	}
+
+
+	/**
+	 * @param  bool  $logClassMissingProperty
+	 */
+	public static function setLogClassMissingProperty( bool $logClassMissingProperty ) : void {
+		self::$logClassMissingProperty = $logClassMissingProperty;
+	}
+
+
+	/**
 	 * @return string
 	 */
-	public static function getDebugLogFilePath() : string {
+	private static function getDebugLogFilePath() : string {
 		return self::$debugLogFilePath;
 	}
 
@@ -66,19 +123,17 @@ class config {
 	 * @return \Monolog\Logger
 	 */
 	public static function getDebugLogger() : \Monolog\Logger {
-		if(!isset(self::$debugLogger)) {
+		if( !isset( self::$debugLogger ) ) {
 			self::createDebugLogger();
 		}
+
 		return self::$debugLogger;
 	}
 
 
-	/**
-	 * @param  \Monolog\Logger  $debugLogger
-	 */
-	public static function createDebugLogger(  ) : void {
+	private static function createDebugLogger() : void {
 		self::$debugLogger = new \Monolog\Logger( self::getDebugLogChannel() );
-		self::$debugLogger->pushHandler( new \Monolog\Handler\StreamHandler( config::getDebugLogFilePath(), \Monolog\Logger::DEBUG ) );
+		self::$debugLogger->pushHandler( new \Monolog\Handler\StreamHandler( self::getDebugLogFilePath(), \Monolog\Logger::DEBUG ) );
 	}
 
 }
