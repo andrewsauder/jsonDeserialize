@@ -71,6 +71,7 @@ To enable debug logging (useful for determining missing properties), run these t
 ```
 
 ###Fine Tune Logging
+
 By default, when logging is enabled, all debugging messages are enabled.
 
 - To turn off messages about properties that exist in the class but do not exist in the JSON source:
