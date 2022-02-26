@@ -10,5 +10,11 @@
   "require": {
 	"php": ">=8.0",
 	"monolog/monolog": "^2.3"
+  },
+  "authors": [
+  {
+	"name": "Andrew Sauder",
+	"email": "andrew@sauder.email"
   }
+]
 }
