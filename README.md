@@ -70,7 +70,7 @@ To enable debug logging (useful for determining missing properties), run these t
 \andrewsauder\jsonDeserialize\config::setDebugLogPath( 'C:/inetpub/logs' );
 ```
 
-###Fine Tune Logging
+### Fine Tune Logging
 
 By default, when logging is enabled, all debugging messages are enabled.
 
