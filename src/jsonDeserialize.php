@@ -162,7 +162,14 @@ abstract class jsonDeserialize
 				}
 
 				//cast jsonValue to the property type
-				$castSuccessfully = settype( $jsonValue, $propertyTypeName );
+				try {
+					$castSuccessfully = settype( $jsonValue, $propertyTypeName );
+				}
+				catch(\Error $e ) {
+					error_log(  'JsonDeserializeException: '.$instance::class . '->'.$propertyName.' has an invalid type (or one that cannot be found) of '.$propertyTypeName );
+					throw new jsonDeserializeException( 'Invalid data type for ' . $propertyName, 500, $e );
+				}
+
 				if( !$castSuccessfully ) {
 					throw new jsonDeserializeException( 'Invalid data type for ' . $propertyName );
 				}
