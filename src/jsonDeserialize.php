@@ -1,19 +1,23 @@
 <?php
 namespace andrewsauder\jsonDeserialize;
+
+
 use andrewsauder\jsonDeserialize\attributes\excludeJsonDeserialize;
+use andrewsauder\jsonDeserialize\attributes\excludeJsonSerialize;
 use andrewsauder\jsonDeserialize\exceptions\jsonDeserializeException;
 
 
 abstract class jsonDeserialize
 	implements
-	\andrewsauder\jsonDeserialize\interfaces\jsonDeserialize {
+	\andrewsauder\jsonDeserialize\interfaces\jsonDeserialize,
+	\JsonSerializable {
 
-
-	private static function jsonDeserializeLog( string $message, array $context=[] ) {
+	private static function jsonDeserializeLog( string $message, array $context = [] ) {
 		if( config::isDebugLogging() ) {
 			config::getDebugLogger()->debug( $message, $context );
 		}
 	}
+
 
 	/**
 	 * Initialize from outside object
@@ -32,7 +36,7 @@ abstract class jsonDeserialize
 				$json = json_decode( $json, false, 512, JSON_THROW_ON_ERROR );
 			}
 			catch( \JsonException $e ) {
-				throw new jsonDeserializeException( 'Malformed JSON '.$calledClassFqn, 400, $e );
+				throw new jsonDeserializeException( 'Malformed JSON ' . $calledClassFqn, 400, $e );
 			}
 		}
 
@@ -45,8 +49,85 @@ abstract class jsonDeserialize
 			return $objects;
 		}
 		else {
-			return self::jsonDeserializeObject( $calledClassFqn, $json );
+			$final = self::jsonDeserializeObject( $calledClassFqn, $json );
 		}
+
+
+		if( method_exists( $final, '_afterJsonDeserialize' ) ) {
+			$final->_afterJsonDeserialize();
+		}
+
+		return $final;
+	}
+
+
+	/**
+	 * @return array
+	 * @throws \andrewsauder\jsonDeserialize\exceptions\jsonDeserializeException
+	 */
+	public function jsonSerialize() : array {
+		if( method_exists( $this, '_beforeJsonSerialize' ) ) {
+			$this->_beforeJsonSerialize();
+		}
+
+		$export = [];
+
+		//get the called class name
+		$calledClassFqn = self::classNameToFqn( get_called_class() );
+
+		try {
+			$rClass = new \ReflectionClass( $calledClassFqn );
+		}
+		catch( \ReflectionException $e ) {
+			throw new jsonDeserializeException( 'Failed to serialize object '.$calledClassFqn.' to json', 400, $e );
+		}
+
+		//get properties of the class and add them to the export
+		$rProperties = $rClass->getProperties();
+		foreach( $rProperties as $rProperty ) {
+			$propertyName = $rProperty->getName();
+
+			if($rProperty->hasType()) {
+				//if property is not meant to be serialized, exclude it
+				$attributes = $rProperty->getAttributes( excludeJsonSerialize::class );
+				if( count( $attributes ) === 0 ) {
+					$rPropertyType = $rProperty->getType();
+
+					$rPropertyTypeName = '';
+					if(!($rPropertyType instanceof \ReflectionUnionType)) {
+						$rPropertyTypeName = $rPropertyType->getName();
+					}
+
+					//if the property is an array, check if the doc comment defines the type
+					$propertyIsTypedArray = false;
+					if( $rPropertyTypeName == 'array' ) {
+						$arrayType = self::getVarTypeFromDocComment( $rProperty->getDocComment() );
+						if( $arrayType != 'array' ) {
+							$propertyIsTypedArray = true;
+						}
+					}
+
+					//load the data from json into the instance of our class
+					if( $propertyIsTypedArray ) {
+						$export[ $propertyName ] = [];
+						$values                  = $rProperty->getValue( $this );
+						foreach( $values as $key => $value ) {
+							$export[ $propertyName ][ $key ] = $this->jsonSerializeDataItem( $rProperty, $value );
+						}
+					}
+					else {
+						$value                   = $rProperty->getValue( $this );
+						$export[ $propertyName ] = $this->jsonSerializeDataItem( $rProperty, $value );
+					}
+				}
+			}
+			else {
+				$export[ $propertyName ] = $rProperty->getValue( $this );
+			}
+
+		}
+
+		return $export;
 	}
 
 
@@ -67,10 +148,10 @@ abstract class jsonDeserialize
 		$rProperties = $rClass->getProperties();
 
 		//get the fields not defined on the class
-		foreach($json as $key=>$value) {
-			if(!$rClass->hasProperty($key)) {
+		foreach( $json as $key => $value ) {
+			if( !$rClass->hasProperty( $key ) ) {
 				if( config::isDebugLogging() && config::isLogClassMissingProperty() ) {
-					config::getDebugLogger()->debug( $calledClassFqn.'->'.$key.' is not defined on the class. Value will be injected in class with standard JSON decode types.' );
+					config::getDebugLogger()->debug( $calledClassFqn . '->' . $key . ' is not defined on the class. Value will be injected in class with standard JSON decode types.' );
 				}
 				$instance->$key = $value;
 			}
@@ -89,7 +170,7 @@ abstract class jsonDeserialize
 			//if there is not a matching json property, ignore it
 			if( !property_exists( $json, $propertyName ) ) {
 				if( config::isDebugLogging() && config::isLogJsonMissingProperty() ) {
-					config::getDebugLogger()->debug( $rProperty->class.'->'.$propertyName.' not defined JSON source data' );
+					config::getDebugLogger()->debug( $rProperty->class . '->' . $propertyName . ' not defined JSON source data' );
 				}
 				continue;
 			}
@@ -97,17 +178,22 @@ abstract class jsonDeserialize
 			//get the type of this property
 			$rPropertyType = $rProperty->getType();
 
-			if(!isset($rPropertyType)) {
+			if( !isset( $rPropertyType ) ) {
 				if( config::isDebugLogging() && config::isLogClassPropertyMissingType() ) {
-					config::getDebugLogger()->debug( $rProperty->class.'->'.$propertyName.' does not have a type defined. Value will be injected in class with standard JSON decode types.' );
+					config::getDebugLogger()->debug( $rProperty->class . '->' . $propertyName . ' does not have a type defined. Value will be injected in class with standard JSON decode types.' );
 				}
 				$instance->$propertyName = $json->$propertyName;
 				continue;
 			}
 
+			$rPropertyTypeName = '';
+			if(!($rPropertyType instanceof \ReflectionUnionType)) {
+				$rPropertyTypeName = $rPropertyType->getName();
+			}
+
 			//if the property is an array, check if the doc comment defines the type
 			$propertyIsTypedArray = false;
-			if( $rPropertyType->getName() == 'array' ) {
+			if( $rPropertyTypeName == 'array' ) {
 				$arrayType = self::getVarTypeFromDocComment( $rProperty->getDocComment() );
 				if( $arrayType != 'array' ) {
 					$propertyIsTypedArray = true;
@@ -142,7 +228,11 @@ abstract class jsonDeserialize
 	private static function jsonDeserializeDataItem( mixed $instance, \ReflectionProperty $rProperty, mixed $jsonValue, bool $allowsNull ) : mixed {
 		$propertyName     = $rProperty->getName();
 		$rPropertyType    = $rProperty->getType();
-		$propertyTypeName = $rPropertyType->getName();
+		$propertyTypeName = '';
+		if(!($rPropertyType instanceof \ReflectionUnionType)) {
+			$propertyTypeName = $rPropertyType->getName();
+		}
+
 
 		//get type of array if specified
 		if( $propertyTypeName == 'array' ) {
@@ -154,7 +244,7 @@ abstract class jsonDeserialize
 		try {
 			$rPropertyClass = new \ReflectionClass( $propertyTypeName );
 		}
-		//regular non-class types
+			//regular non-class types
 		catch( \ReflectionException $e ) {
 			if( $jsonValue !== null ) {
 				if( $propertyTypeName == 'array' ) {
@@ -162,16 +252,18 @@ abstract class jsonDeserialize
 				}
 
 				//cast jsonValue to the property type
-				try {
-					$castSuccessfully = settype( $jsonValue, $propertyTypeName );
-				}
-				catch(\Error $e ) {
-					error_log(  'JsonDeserializeException: '.$instance::class . '->'.$propertyName.' has an invalid type (or one that cannot be found) of '.$propertyTypeName );
-					throw new jsonDeserializeException( 'Invalid data type for ' . $propertyName, 500, $e );
-				}
+				if(!empty($propertyTypeName)) {
+					try {
+						$castSuccessfully = settype( $jsonValue, $propertyTypeName );
+					}
+					catch( \Error $e ) {
+						error_log( 'JsonDeserializeException: ' . $instance::class . '->' . $propertyName . ' has an invalid type (or one that cannot be found) of ' . $propertyTypeName );
+						throw new jsonDeserializeException( 'Invalid data type for ' . $propertyName, 500, $e );
+					}
 
-				if( !$castSuccessfully ) {
-					throw new jsonDeserializeException( 'Invalid data type for ' . $propertyName );
+					if( !$castSuccessfully ) {
+						throw new jsonDeserializeException( 'Invalid data type for ' . $propertyName );
+					}
 				}
 
 				return $jsonValue;
@@ -225,8 +317,25 @@ abstract class jsonDeserialize
 				throw new jsonDeserializeException( 'Invalid date time provided for ' . $errorMessageDataPosition, 400, $e );
 			}
 		}
-
 	}
+
+	/**
+	 * @param  \ReflectionProperty  $rProperty
+	 * @param  mixed                $value
+	 *
+	 * @return mixed
+	 */
+	private function jsonSerializeDataItem( \ReflectionProperty $rProperty, mixed $value ) : mixed {
+		if( class_exists('\MongoDB\BSON\ObjectId') && $value instanceof \MongoDB\BSON\ObjectId ) {
+			return (string) $value;
+		}
+		elseif( $value instanceof \DateTimeInterface ) {
+			return $value->format( DATE_ATOM  );
+		}
+
+		return $value;
+	}
+
 
 
 	private static function classNameToFqn( $className ) : string {
