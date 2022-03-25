@@ -30,7 +30,6 @@ Add this method to your class that extends `\andrewsauder\jsonDeserialize\jsonDe
 myModel.php
 
 ```php
-/** @method myModel static jsonDeserialize() */
 class myModel extends \andrewsauder\jsonDeserialize\jsonDeserialize {
 
 	public int    $varA = 1;
