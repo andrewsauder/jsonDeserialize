@@ -138,7 +138,7 @@ abstract class jsonDeserialize
 		//load new instance of this class
 		try {
 			$rClass   = new \ReflectionClass( $calledClassFqn );
-			$instance = $rClass->newInstance();
+			$instance = $rClass->newInstanceWithoutConstructor();
 		}
 		catch( \ReflectionException $e ) {
 			throw new jsonDeserializeException( 'Failed to load type ' . $calledClassFqn . ' for deserialization', 500, $e );
