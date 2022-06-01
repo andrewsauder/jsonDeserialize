@@ -89,7 +89,7 @@ abstract class jsonDeserialize
 
 			if($rProperty->hasType()) {
 				//if property is not meant to be serialized, exclude it
-				$attributes = $rProperty->getAttributes( excludeJsonSerialize::class );
+				$attributes = $rProperty->getAttributes( excludeJsonSerialize::class, \ReflectionAttribute::IS_INSTANCEOF );
 				if( count( $attributes ) === 0 ) {
 					$rPropertyType = $rProperty->getType();
 
@@ -162,7 +162,7 @@ abstract class jsonDeserialize
 			$propertyName = $rProperty->getName();
 
 			//exclude if attribute says to
-			$attributes = $rProperty->getAttributes( excludeJsonDeserialize::class );
+			$attributes = $rProperty->getAttributes( excludeJsonDeserialize::class, \ReflectionAttribute::IS_INSTANCEOF );
 			if( count( $attributes ) > 0 ) {
 				continue;
 			}
