@@ -30,6 +30,10 @@ abstract class jsonDeserialize
 	public static function jsonDeserialize( string|\stdClass $json ) : mixed {
 		$calledClassFqn = self::classNameToFqn( get_called_class() );
 
+		if( method_exists( $calledClassFqn, '_beforeJsonDeserialize' ) ) {
+			$calledClassFqn::_beforeJsonDeserialize( $json );
+		}
+
 		//parse the json
 		if( is_string( $json ) ) {
 			try {
@@ -125,6 +129,10 @@ abstract class jsonDeserialize
 				$export[ $propertyName ] = $rProperty->getValue( $this );
 			}
 
+		}
+
+		if( method_exists( $this, '_afterJsonSerialize' ) ) {
+			return $this->_afterJsonSerialize( $export );
 		}
 
 		return $export;

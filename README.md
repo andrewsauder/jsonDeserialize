@@ -19,11 +19,33 @@ Tag properties on your class with the `#[excludeJsonDeserialize]` attribute to p
 Tag properties on your class with the `#[excludeJsonSerialize]` attribute to prevent that field from being **serialized** into the output of `json_encode()`;
 
 ## Hooks
-### _afterJsonDeserialize
-Add this method to your class that extends `\andrewsauder\jsonDeserialize\jsonDeserialize` to run actions on the newly created class after deserialization is complete. It is automagically called.
+The hooks provided allow you ti extend the default functionality of jsonDeserialize. Add hook methods to your class that extends `\andrewsauder\jsonDeserialize\jsonDeserialize`. The hook will be called automatically during the deserialization and serialization lifecycle.
 
-### _beforeJsonSerialize
-Add this method to your class that extends `\andrewsauder\jsonDeserialize\jsonDeserialize` to run actions on the class before serialization to JSON is run. It is automagically called anytime JSON serialization is initiated.
+### Before Json Deserialize
+Static method called on a class immediately before deserialization into the class occurs.
+```php 
+protected static function _beforeJsonDeserialize( string|\stdClass $json ): void {}
+```
+
+### After Json Deserialize
+Called on a newly created instance after deserialization is complete.
+```php 
+protected function _afterJsonDeserialize() : void {}
+```
+
+### Before Json Serialize
+Called on an instance immediately before serialization to JSON.
+```php 
+protected function _beforeJsonSerialize() : void {}
+```
+
+### After Json Serialize
+Called on an instance after serialization to a plain array. The standard export data is provided to the hook and the hook must return an array which will be immediately encoded to JSON.
+```php 
+protected function _afterJsonSerialize( array $export ): array {
+    return $export;
+}
+```
 
 ## Code Example
 
@@ -94,7 +116,8 @@ D6
 
 ## Debug Logging
 
-To enable debug logging (useful for determining missing properties), run these two line prior to deserializing. All objects deserialized after will include debug logging to a new log file in the provided path.
+To enable debug logging, add these lines prior to deserializing. All objects deserialized after will include debug logging to a new log file in the provided path.
+The logging is expensive but it is useful for determining missing properties on classes or json data.
 
 ```php
 \andrewsauder\jsonDeserialize\config::setDebugLogging( true );
