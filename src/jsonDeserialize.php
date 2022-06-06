@@ -114,14 +114,18 @@ abstract class jsonDeserialize
 					//load the data from json into the instance of our class
 					if( $propertyIsTypedArray ) {
 						$export[ $propertyName ] = [];
-						$values                  = $rProperty->getValue( $this );
-						foreach( $values as $key => $value ) {
-							$export[ $propertyName ][ $key ] = $this->jsonSerializeDataItem( $rProperty, $value );
+						if($rProperty->isInitialized( $this )) {
+							$values                  = $rProperty->getValue( $this );
+							foreach( $values as $key => $value ) {
+								$export[ $propertyName ][ $key ] = $this->jsonSerializeDataItem( $rProperty, $value );
+							}
 						}
 					}
 					else {
-						$value                   = $rProperty->getValue( $this );
-						$export[ $propertyName ] = $this->jsonSerializeDataItem( $rProperty, $value );
+						if($rProperty->isInitialized( $this )) {
+							$value                   = $rProperty->getValue( $this );
+							$export[ $propertyName ] = $this->jsonSerializeDataItem( $rProperty, $value );
+						}
 					}
 				}
 			}
