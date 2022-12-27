@@ -6,7 +6,7 @@ determined by a PHPDoc definition.
 Requires &gt;=PHP 8
 
 ## Installation
-`composer require andrewsauder\json-deserialize`
+`composer require andrewsauder/json-deserialize`
 
 ## Usage
 Extend your class from `\andrewsauder\jsonDeserialize\jsonDeserialize` class then call ` {yourClass}::jsonDeserialize( {stringified json} );` to deserialize the JSON automatically into your class.
