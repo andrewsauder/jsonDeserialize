@@ -337,9 +337,9 @@ abstract class jsonDeserialize
 	 *
 	 * @return mixed
 	 */
-	private function jsonSerializeDataItem( \ReflectionProperty $rProperty, mixed $value ) : mixed {
-		if( class_exists('\MongoDB\BSON\ObjectId') && $value instanceof \MongoDB\BSON\ObjectId ) {
-			return (string) $value;
+	private function jsonSerializeDataItem( \ReflectionProperty $rProperty, mixed $value ): mixed {
+		if( \andrewsauder\jsonDeserialize\cache::getClassExists( '\MongoDB\BSON\ObjectId' ) && $value instanceof \MongoDB\BSON\ObjectId ) {
+			return (string)$value;
 		}
 		elseif( $value instanceof \DateTimeInterface ) {
 			return $value->format( DATE_ATOM  );
