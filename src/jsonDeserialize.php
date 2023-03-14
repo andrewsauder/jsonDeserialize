@@ -22,7 +22,7 @@ abstract class jsonDeserialize
 	 *
 	 * @param string|\stdClass $json
 	 *
-	 * @return mixed Instance of the called class
+	 * @return $this
 	 * @throws \andrewsauder\jsonDeserialize\exceptions\jsonDeserializeException
 	 */
 	public static function jsonDeserialize( string|\stdClass $json ): mixed {
