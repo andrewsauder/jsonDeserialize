@@ -322,6 +322,33 @@ abstract class jsonDeserialize
 				throw new jsonDeserializeException( 'Failed to instantiate type ' . $propertyTypeName . ' for ' . $errorMessageDataPosition, 500, $e );
 			}
 		}
+		elseif($rPropertyClass->isEnum()) {
+			try {
+				$rEnum = new \ReflectionEnum( $propertyTypeName );
+			}
+			catch( \ReflectionException $e ) {
+				throw new jsonDeserializeException( 'Failed to reflect an enum of type ' . $propertyTypeName . ' for ' . $errorMessageDataPosition, 500, $e );
+			}
+
+			if($rEnum->isBacked()) {
+				try {
+					return $propertyTypeName::from($jsonValue);
+				}
+				catch( \ValueError $e ) {
+					throw new jsonDeserializeException( 'Failed set ' . $propertyTypeName . ' to '.$jsonValue.' for ' . $errorMessageDataPosition, 500, $e );
+				}
+			}
+			else {
+				try {
+					return $rEnum->getCase( $jsonValue );
+				}
+				catch( \ReflectionException $e ) {
+					throw new jsonDeserializeException( 'Enum ' . $propertyTypeName . ' does not have case '.$jsonValue.' for ' . $errorMessageDataPosition, 500, $e );
+				}
+			}
+
+
+		}
 
 		//value provided
 		else {
