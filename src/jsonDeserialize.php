@@ -5,12 +5,13 @@ use andrewsauder\jsonDeserialize\attributes\excludeJsonDeserialize;
 use andrewsauder\jsonDeserialize\attributes\excludeJsonSerialize;
 use andrewsauder\jsonDeserialize\exceptions\jsonDeserializeException;
 
+#[\AllowDynamicProperties]
 abstract class jsonDeserialize
 	implements
 	\andrewsauder\jsonDeserialize\interfaces\jsonDeserialize,
 	\JsonSerializable {
 
-	private static function jsonDeserializeLog( string $message, array $context = [] ) {
+	private static function jsonDeserializeLog( string $message, array $context = [] ): void {
 		if( config::isDebugLogging() ) {
 			config::getDebugLogger()->debug( $message, $context );
 		}
@@ -22,10 +23,10 @@ abstract class jsonDeserialize
 	 *
 	 * @param string|\stdClass $json
 	 *
-	 * @return $this
+	 * @return $this|$this[]
 	 * @throws \andrewsauder\jsonDeserialize\exceptions\jsonDeserializeException
 	 */
-	public static function jsonDeserialize( string|\stdClass $json ): mixed {
+	public static function jsonDeserialize( string|\stdClass $json ): self|array {
 		$calledClassFqn = self::classNameToFqn( get_called_class() );
 
 		if( method_exists( $calledClassFqn, '_beforeJsonDeserialize' ) ) {
