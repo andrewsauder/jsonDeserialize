@@ -21,12 +21,12 @@ abstract class jsonDeserialize
 	/**
 	 * Initialize from outside object
 	 *
-	 * @param string|\stdClass $json
+	 * @param string|\stdClass|array $json
 	 *
 	 * @return $this|$this[]
 	 * @throws \andrewsauder\jsonDeserialize\exceptions\jsonDeserializeException
 	 */
-	public static function jsonDeserialize( string|\stdClass $json ): self|array {
+	public static function jsonDeserialize( string|\stdClass|array $json ): self|array {
 		$calledClassFqn = self::classNameToFqn( get_called_class() );
 
 		if( method_exists( $calledClassFqn, '_beforeJsonDeserialize' ) ) {
@@ -214,7 +214,7 @@ abstract class jsonDeserialize
 			if( $propertyIsTypedArray ) {
 				$instance->$propertyName = [];
 				foreach( $json->$propertyName as $key => $jsonItem ) {
-					$instance->$propertyName[ $key ] = self::jsonDeserializeDataItem( $instance, $rProperty, $jsonItem, false );
+					$instance->$propertyName[ $key ] = self::jsonDeserializeDataItem( $instance, $rProperty, $jsonItem, $rPropertyType->allowsNull() );
 				}
 			}
 			else {
@@ -247,6 +247,15 @@ abstract class jsonDeserialize
 		if( $propertyTypeName=='array' ) {
 			//get type  from @var doc block
 			$propertyTypeName = self::getVarTypeFromDocComment( $rProperty->getDocComment() );
+			//untype a union type array
+			if( str_contains( $propertyTypeName, '|' ) ) {
+				$propertyTypeName = 'array';
+			}
+		}
+
+		if( str_starts_with( $propertyTypeName, '?' ) ) {
+			$propertyTypeName = substr( $propertyTypeName, 1 );
+			$allowsNull       = true;
 		}
 
 		//if the property type is a class we try to get reflection information about it and set the value properly, otherwise it does the default types in the catch
@@ -262,12 +271,12 @@ abstract class jsonDeserialize
 
 				//cast jsonValue to the property type
 				if( !empty( $propertyTypeName ) ) {
-					if($propertyTypeName==='bool') {
-						if(is_bool($jsonValue)) {
+					if( $propertyTypeName==='bool' ) {
+						if( is_bool( $jsonValue ) ) {
 							return $jsonValue;
 						}
 						else {
-							return trim(strtolower($jsonValue))==='true' || trim($jsonValue)=='1';
+							return trim( strtolower( $jsonValue ) )==='true' || trim( $jsonValue )=='1';
 						}
 					}
 					else {
@@ -323,7 +332,7 @@ abstract class jsonDeserialize
 				throw new jsonDeserializeException( 'Failed to instantiate type ' . $propertyTypeName . ' for ' . $errorMessageDataPosition, 500, $e );
 			}
 		}
-		elseif($rPropertyClass->isEnum()) {
+		elseif( $rPropertyClass->isEnum() ) {
 			try {
 				$rEnum = new \ReflectionEnum( $propertyTypeName );
 			}
@@ -331,12 +340,12 @@ abstract class jsonDeserialize
 				throw new jsonDeserializeException( 'Failed to reflect an enum of type ' . $propertyTypeName . ' for ' . $errorMessageDataPosition, 500, $e );
 			}
 
-			if($rEnum->isBacked()) {
+			if( $rEnum->isBacked() ) {
 				try {
-					return $propertyTypeName::from($jsonValue);
+					return $propertyTypeName::from( $jsonValue );
 				}
 				catch( \ValueError $e ) {
-					throw new jsonDeserializeException( 'Failed set ' . $propertyTypeName . ' to '.$jsonValue.' for ' . $errorMessageDataPosition, 500, $e );
+					throw new jsonDeserializeException( 'Failed set ' . $propertyTypeName . ' to ' . $jsonValue . ' for ' . $errorMessageDataPosition, 500, $e );
 				}
 			}
 			else {
@@ -344,10 +353,9 @@ abstract class jsonDeserialize
 					return $rEnum->getCase( $jsonValue );
 				}
 				catch( \ReflectionException $e ) {
-					throw new jsonDeserializeException( 'Enum ' . $propertyTypeName . ' does not have case '.$jsonValue.' for ' . $errorMessageDataPosition, 500, $e );
+					throw new jsonDeserializeException( 'Enum ' . $propertyTypeName . ' does not have case ' . $jsonValue . ' for ' . $errorMessageDataPosition, 500, $e );
 				}
 			}
-
 
 		}
 
@@ -399,9 +407,20 @@ abstract class jsonDeserialize
 	private static function getVarTypeFromDocComment( string $docComment ): string {
 		$matches = [];
 
-		preg_match( '/@var ([^ \[\]]+)(\[])?/', $docComment, $matches );
+		preg_match( '/@var ([^ <>\[\]]+)(<)?([^ ,>\[\]]+)?(, )?([^ >\[\]]+)?(>)?(\[])?/', $docComment, $matches );
 
 		if( count( $matches )>0 ) {
+			if( $matches[ 1 ]=='array' ) {
+				//@var array<T, T>
+				if( $matches[ 5 ]!='' ) {
+					return $matches[ 5 ];
+				}
+				//@var array<T>
+				elseif( $matches[ 3 ]!='' ) {
+					return $matches[ 3 ];
+				}
+			}
+			//@var T or @var T[]
 			return $matches[ 1 ];
 		}
 
