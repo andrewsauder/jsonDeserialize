@@ -412,11 +412,11 @@ abstract class jsonDeserialize
 		if( count( $matches )>0 ) {
 			if( $matches[ 1 ]=='array' ) {
 				//@var array<T, T>
-				if( $matches[ 5 ]!='' ) {
+				if( isset($matches[ 5 ]) && $matches[ 5 ]!='' ) {
 					return $matches[ 5 ];
 				}
 				//@var array<T>
-				elseif( $matches[ 3 ]!='' ) {
+				elseif( isset($matches[ 3 ]) && $matches[ 3 ]!='' ) {
 					return $matches[ 3 ];
 				}
 			}
