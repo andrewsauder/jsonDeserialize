@@ -3,6 +3,7 @@ namespace andrewsauder\jsonDeserialize;
 
 use andrewsauder\jsonDeserialize\attributes\excludeJsonDeserialize;
 use andrewsauder\jsonDeserialize\attributes\excludeJsonSerialize;
+use andrewsauder\jsonDeserialize\attributes\jsonSerializeDateTimeFormat;
 use andrewsauder\jsonDeserialize\exceptions\jsonDeserializeException;
 
 #[\AllowDynamicProperties]
@@ -385,6 +386,11 @@ abstract class jsonDeserialize
 			return (string)$value;
 		}
 		elseif( $value instanceof \DateTimeInterface ) {
+			$dateTimeFormatAttributes = $rProperty->getAttributes( jsonSerializeDateTimeFormat::class );
+			if(count($dateTimeFormatAttributes)>0) {
+				$dateTimeFormatAttributeInstance = $dateTimeFormatAttributes[0]->newInstance();
+				return $value->format( $dateTimeFormatAttributeInstance->datetimeFormat );
+			}
 			return $value->format( DATE_ATOM );
 		}
 

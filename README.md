@@ -18,6 +18,9 @@ Tag properties on your class with the `#[excludeJsonDeserialize]` attribute to p
 ### excludeJsonSerialize
 Tag properties on your class with the `#[excludeJsonSerialize]` attribute to prevent that field from being **serialized** into the output of `json_encode()`;
 
+### jsonSerializeDateTimeFormat(string $format)
+Tag properties on your class that implement DateTimeInterface with the `#[jsonSerializeDateTimeFormat('Y-m-d')]` attribute to force a specific format output. When this attribute is not present, the `DATE_ATOM` format is used by default.
+
 ## Hooks
 The hooks provided allow you ti extend the default functionality of jsonDeserialize. Add hook methods to your class that extends `\andrewsauder\jsonDeserialize\jsonDeserialize`. The hook will be called automatically during the deserialization and serialization lifecycle.
 
