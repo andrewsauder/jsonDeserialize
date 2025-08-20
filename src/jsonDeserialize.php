@@ -2,7 +2,6 @@
 namespace andrewsauder\jsonDeserialize;
 
 use andrewsauder\jsonDeserialize\attributes\excludeJsonDeserialize;
-use andrewsauder\jsonDeserialize\attributes\excludeJsonSerialize;
 use andrewsauder\jsonDeserialize\attributes\jsonSerializeDateTimeFormat;
 use andrewsauder\jsonDeserialize\exceptions\jsonDeserializeException;
 
@@ -73,66 +72,7 @@ abstract class jsonDeserialize
 			$this->_beforeJsonSerialize();
 		}
 
-		$export = [];
-
-		//get the called class name
-		$calledClassFqn = self::classNameToFqn( get_called_class() );
-
-		try {
-			$rClass = new \ReflectionClass( $calledClassFqn );
-		}
-		catch( \ReflectionException $e ) {
-			throw new jsonDeserializeException( 'Failed to serialize object ' . $calledClassFqn . ' to json', 400, $e );
-		}
-
-		//get properties of the class and add them to the export
-		$rProperties = $rClass->getProperties();
-		foreach( $rProperties as $rProperty ) {
-			$propertyName = $rProperty->getName();
-
-			if( $rProperty->hasType() ) {
-				//if property is not meant to be serialized, exclude it
-				$attributes = $rProperty->getAttributes( excludeJsonSerialize::class, \ReflectionAttribute::IS_INSTANCEOF );
-				if( count( $attributes )===0 ) {
-					$rPropertyType = $rProperty->getType();
-
-					$rPropertyTypeName = '';
-					if( !( $rPropertyType instanceof \ReflectionUnionType ) ) {
-						$rPropertyTypeName = $rPropertyType->getName();
-					}
-
-					//if the property is an array, check if the doc comment defines the type
-					$propertyIsTypedArray = false;
-					if( $rPropertyTypeName=='array' ) {
-						$arrayType = self::getVarTypeFromDocComment( $rProperty->getDocComment() );
-						if( $arrayType!='array' ) {
-							$propertyIsTypedArray = true;
-						}
-					}
-
-					//load the data from json into the instance of our class
-					if( $propertyIsTypedArray ) {
-						$export[ $propertyName ] = [];
-						if( $rProperty->isInitialized( $this ) ) {
-							$values = $rProperty->getValue( $this );
-							foreach( $values as $key => $value ) {
-								$export[ $propertyName ][ $key ] = $this->jsonSerializeDataItem( $rProperty, $value );
-							}
-						}
-					}
-					else {
-						if( $rProperty->isInitialized( $this ) ) {
-							$value                   = $rProperty->getValue( $this );
-							$export[ $propertyName ] = $this->jsonSerializeDataItem( $rProperty, $value );
-						}
-					}
-				}
-			}
-			else {
-				$export[ $propertyName ] = $rProperty->getValue( $this );
-			}
-
-		}
+		$export = self::exportObject($this);
 
 		if( method_exists( $this, '_afterJsonSerialize' ) ) {
 			return $this->_afterJsonSerialize( $export );
@@ -431,6 +371,112 @@ abstract class jsonDeserialize
 		}
 
 		return 'array';
+	}
+
+
+	/** @internal plan-driven export */
+	private static function exportObject( object $obj ): array {
+		$plan = cache\serializePlanCache::for( $obj );
+		$out  = [];
+
+		foreach( $plan->props as $p ) {
+			$val = ( $p->getter )( $obj );
+
+			// Fast path: null / scalar
+			if( $val===null || is_scalar($val) ) {
+				$out[ $p->name ] = $val;
+				continue;
+			}
+
+			if( $p->castType instanceof jsonSerializeCastType ) {
+				if($p->castType==jsonSerializeCastType::string) {
+					$out[ $p->name ] = (string)$val;
+					continue;
+				}
+				elseif($p->castType==jsonSerializeCastType::int) {
+					$out[ $p->name ] = (int)$val;
+					continue;
+				}
+				elseif($p->castType==jsonSerializeCastType::float) {
+					$out[ $p->name ] = (float)$val;
+					continue;
+				}
+				elseif($p->castType==jsonSerializeCastType::bool) {
+					$out[ $p->name ] = (bool)$val;
+					continue;
+				}
+			}
+
+			// DateTimeInterface with optional format
+			if( $val instanceof \DateTimeInterface ) {
+				$out[ $p->name ] = $val->format( $p->dateFormat ?? DATE_ATOM );
+				continue;
+			}
+
+			// Backed enums
+			if( $val instanceof \UnitEnum ) {
+				$out[ $p->name ] = $val instanceof \BackedEnum ? $val->value : $val->name;
+				continue;
+			}
+
+			// Arrays (vector or associative) — map recursively
+			if( \is_array( $val ) ) {
+				$out[ $p->name ] = self::exportArray( $val, $p->dateFormat );
+				continue;
+			}
+
+			// Nested objects:
+			// - If they extend jsonDeserialize, use same exporter (no reflection).
+			// - If they implement JsonSerializable, trust their contract.
+			// - Else, cast public props (rare fallback).
+			if( $val instanceof self ) {
+				$out[ $p->name ] = self::exportObject( $val );
+			}
+			elseif( $val instanceof \JsonSerializable ) {
+				/** @var mixed $serialized */
+				$serialized      = $val->jsonSerialize();
+				$out[ $p->name ] = $serialized;
+			}
+			else {
+				$out[ $p->name ] = \get_object_vars( $val ); // last resort
+			}
+		}
+		return $out;
+	}
+
+
+	private static function exportArray( array $a, ?string $itemDateFormat ): array {
+		// Flat map with minimal branching inside the loop
+		$out = [];
+		foreach( $a as $k => $v ) {
+			if( $v===null || \is_scalar( $v ) ) {
+				$out[ $k ] = $v;
+				continue;
+			}
+
+			if( $v instanceof \DateTimeInterface ) {
+				$out[ $k ] = $v->format( $itemDateFormat ?? DATE_ATOM );
+				continue;
+			}
+			if( $v instanceof \UnitEnum ) {
+				$out[ $k ] = $v instanceof \BackedEnum ? $v->value : $v->name;
+				continue;
+			}
+			if( \is_array( $v ) ) {
+				$out[ $k ] = self::exportArray( $v, $itemDateFormat );
+				continue;
+			}
+			if( $v instanceof self ) {
+				$out[ $k ] = self::exportObject( $v );
+				continue;
+			}
+			if( $v instanceof \JsonSerializable ) {
+				$out[ $k ] = $v->jsonSerialize();
+				continue;
+			}
+			$out[ $k ] = \get_object_vars( $v );
+		}
+		return $out;
 	}
 
 }
