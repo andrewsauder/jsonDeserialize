@@ -53,9 +53,11 @@ final class serializePlanCache {
 
 			// Create a fast property getter closure bound to the property name.
 			$name   = $rp->getName();
-			$getter = static function(object $o) use ($name) { return $o->$name; };
+			$getter = static function( object $o ) use ( $name ) {
+				return $o->$name ?? null;
+			};
+			$props[ $name ] = new serializeProp( $name, $dateFmt, $castType, $getter );
 
-			$props[$name] = new serializeProp( $name, $dateFmt, $castType, $getter);
 		}
 
 		$plan = new serializePlan($props);
@@ -114,7 +116,7 @@ final class serializePlanCache {
 			$castType         = $p->castType===null ? 'null' : var_export( $p->castType, true );
 			$n          = var_export( $p->name, true );
 			$propsPhp[] =
-				"new \\andrewsauder\\jsonDeserialize\\cache\\serializeProp($n, $df, $castType, static function(object \$o){return \$o->{$p->name};})";
+				"new \\andrewsauder\\jsonDeserialize\\cache\\serializeProp($n, $df, $castType, static function(object \$o){return \$o->{$p->name} ?? null;})";
 		}
 		$propsList = \implode(',', $propsPhp);
 		return <<<PHP
