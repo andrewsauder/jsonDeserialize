@@ -3,6 +3,7 @@ namespace andrewsauder\jsonDeserialize;
 
 use andrewsauder\jsonDeserialize\attributes\excludeJsonDeserialize;
 use andrewsauder\jsonDeserialize\attributes\jsonSerializeDateTimeFormat;
+use andrewsauder\jsonDeserialize\cache\serializeProp;
 use andrewsauder\jsonDeserialize\exceptions\jsonDeserializeException;
 
 #[\AllowDynamicProperties]
@@ -380,103 +381,73 @@ abstract class jsonDeserialize
 		$out  = [];
 
 		foreach( $plan->props as $p ) {
-			$val = ( $p->getter )( $obj );
-
-			// Fast path: null / scalar
-			if( $val===null || is_scalar($val) ) {
-				$out[ $p->name ] = $val;
-				continue;
-			}
-
-			if( $p->castType instanceof jsonSerializeCastType ) {
-				if($p->castType==jsonSerializeCastType::string) {
-					$out[ $p->name ] = (string)$val;
-					continue;
-				}
-				elseif($p->castType==jsonSerializeCastType::int) {
-					$out[ $p->name ] = (int)$val;
-					continue;
-				}
-				elseif($p->castType==jsonSerializeCastType::float) {
-					$out[ $p->name ] = (float)$val;
-					continue;
-				}
-				elseif($p->castType==jsonSerializeCastType::bool) {
-					$out[ $p->name ] = (bool)$val;
-					continue;
-				}
-			}
-
-			// DateTimeInterface with optional format
-			if( $val instanceof \DateTimeInterface ) {
-				$out[ $p->name ] = $val->format( $p->dateFormat ?? DATE_ATOM );
-				continue;
-			}
-
-			// Backed enums
-			if( $val instanceof \UnitEnum ) {
-				$out[ $p->name ] = $val instanceof \BackedEnum ? $val->value : $val->name;
-				continue;
-			}
-
-			// Arrays (vector or associative) — map recursively
-			if( \is_array( $val ) ) {
-				$out[ $p->name ] = self::exportArray( $val, $p->dateFormat );
-				continue;
-			}
-
-			// Nested objects:
-			// - If they extend jsonDeserialize, use same exporter (no reflection).
-			// - If they implement JsonSerializable, trust their contract.
-			// - Else, cast public props (rare fallback).
-			if( $val instanceof self ) {
-				$out[ $p->name ] = self::exportObject( $val );
-			}
-			elseif( $val instanceof \JsonSerializable ) {
-				/** @var mixed $serialized */
-				$serialized      = $val->jsonSerialize();
-				$out[ $p->name ] = $serialized;
-			}
-			else {
-				$out[ $p->name ] = \get_object_vars( $val ); // last resort
-			}
+			$value = ( $p->getter )( $obj );
+			$out[ $p->name ] = self::exportValue($p, $value );
 		}
 		return $out;
 	}
 
 
-	private static function exportArray( array $a, ?string $itemDateFormat ): array {
+	private static function exportArray( serializeProp $p, array $a ): array {
 		// Flat map with minimal branching inside the loop
 		$out = [];
-		foreach( $a as $k => $v ) {
-			if( $v===null || \is_scalar( $v ) ) {
-				$out[ $k ] = $v;
-				continue;
-			}
-
-			if( $v instanceof \DateTimeInterface ) {
-				$out[ $k ] = $v->format( $itemDateFormat ?? DATE_ATOM );
-				continue;
-			}
-			if( $v instanceof \UnitEnum ) {
-				$out[ $k ] = $v instanceof \BackedEnum ? $v->value : $v->name;
-				continue;
-			}
-			if( \is_array( $v ) ) {
-				$out[ $k ] = self::exportArray( $v, $itemDateFormat );
-				continue;
-			}
-			if( $v instanceof self ) {
-				$out[ $k ] = self::exportObject( $v );
-				continue;
-			}
-			if( $v instanceof \JsonSerializable ) {
-				$out[ $k ] = $v->jsonSerialize();
-				continue;
-			}
-			$out[ $k ] = \get_object_vars( $v );
+		foreach( $a as $key => $value ) {
+			$out[ $key ] = self::exportValue( $p, $value );
 		}
 		return $out;
 	}
 
+	private static function exportValue( serializeProp $p, mixed $value ): mixed {
+
+		if( \is_array( $value ) ) {
+			return self::exportArray( $p, $value );
+		}
+
+		if( $p->castType instanceof jsonSerializeCastType ) {
+			if($p->castType==jsonSerializeCastType::string) {
+				return (string)$value;
+			}
+			elseif($p->castType==jsonSerializeCastType::int) {
+				return (int)$value;
+			}
+			elseif($p->castType==jsonSerializeCastType::float) {
+				return (float)$value;
+			}
+			elseif($p->castType==jsonSerializeCastType::bool) {
+				return (bool)$value;
+			}
+		}
+
+		if( $value===null || \is_scalar( $value ) ) {
+			return $value;
+		}
+
+		if( $value instanceof \DateTimeInterface ) {
+			return $value->format(  $p->dateFormat ?? DATE_ATOM  );
+		}
+
+		if( $value instanceof \UnitEnum ) {
+			return $value instanceof \BackedEnum ? $value->value : $value->name;
+		}
+
+
+		// Nested objects:
+		// - If they extend jsonDeserialize, use same exporter (no reflection).
+		// - If they implement JsonSerializable, trust their contract.
+		// - Else, cast public props (rare fallback).
+		if( $value instanceof self ) {
+			return self::exportObject( $value );
+		}
+		elseif( $value instanceof \JsonSerializable ) {
+			/** @var mixed $serialized */
+			return $value->jsonSerialize();
+		}
+		elseif( \is_object( $value ) ) {
+			// If it's an object, we try to get its public properties as a last resort
+			return \get_object_vars( $value ); // last resort
+		}
+
+
+		return $value;
+	}
 }
