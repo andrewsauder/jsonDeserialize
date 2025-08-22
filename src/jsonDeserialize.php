@@ -376,8 +376,11 @@ abstract class jsonDeserialize
 
 
 	/** @internal plan-driven export */
-	private static function exportObject( object $obj ): array {
-		$plan = cache\serializePlanCache::for( $obj );
+	private static function exportObject( object $obj, cache\serializePlanCache $plan=null ): array {
+		if($plan===null) {
+			// If no plan is provided, we create it
+			$plan = cache\serializePlanCache::for( $obj );
+		}
 		$out  = [];
 
 		foreach( $plan->props as $p ) {
@@ -388,22 +391,21 @@ abstract class jsonDeserialize
 	}
 
 
-	private static function exportArray( serializeProp $p, array $a ): array {
+	private static function exportArray( serializeProp $p, array $a, cache\serializePlanCache $plan=null ): array {
 		// Flat map with minimal branching inside the loop
 		$out = [];
 		foreach( $a as $key => $value ) {
-			$out[ $key ] = self::exportValue( $p, $value );
+			$out[ $key ] = self::exportValue( $p, $value, $plan );
 		}
 		return $out;
 	}
 
-	private static function exportValue( serializeProp $p, mixed $value ): mixed {
+	private static function exportValue( serializeProp $p, mixed $value, cache\serializePlanCache $plan=null ): mixed {
 
 		if( \is_array( $value ) ) {
-			return self::exportArray( $p, $value );
+			return self::exportArray( $p, $value, $plan );
 		}
-
-		if( $p->castType instanceof jsonSerializeCastType ) {
+		elseif( $p->castType instanceof jsonSerializeCastType ) {
 			if($p->castType==jsonSerializeCastType::string) {
 				return (string)$value;
 			}
@@ -417,27 +419,18 @@ abstract class jsonDeserialize
 				return (bool)$value;
 			}
 		}
-
-		if( $value===null || \is_scalar( $value ) ) {
+		elseif( $value===null || \is_scalar( $value ) ) {
 			return $value;
 		}
-
-		if( $value instanceof \DateTimeInterface ) {
+		elseif( $value instanceof \DateTimeInterface ) {
 			return $value->format(  $p->dateFormat ?? DATE_ATOM  );
 		}
-
-		if( $value instanceof \UnitEnum ) {
+		elseif( $value instanceof \UnitEnum ) {
 			return $value instanceof \BackedEnum ? $value->value : $value->name;
 		}
-
-
-		// Nested objects:
-		// - If they extend jsonDeserialize, use same exporter (no reflection).
-		// - If they implement JsonSerializable, trust their contract.
-		// - Else, cast public props (rare fallback).
-		if( $value instanceof self ) {
-			return self::exportObject( $value );
-		}
+/*		elseif( $value instanceof self ) {
+			return self::exportObject( $value, $plan );
+		}*/
 		elseif( $value instanceof \JsonSerializable ) {
 			/** @var mixed $serialized */
 			return $value->jsonSerialize();
