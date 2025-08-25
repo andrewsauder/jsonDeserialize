@@ -381,65 +381,89 @@ abstract class jsonDeserialize
 			// If no plan is provided, we create it
 			$plan = cache\serializePlanCache::for( $obj );
 		}
-		$out  = [];
 
-		foreach( $plan->props as $p ) {
-			$value = ( $p->getter )( $obj );
-			$out[ $p->name ] = self::exportValue($p, $value );
+		$out = [];
+		foreach ( $plan->props as $p ) {
+			// Local variable avoids property read on each call
+			$getter = $p->getter;
+			$value  = $getter( $obj );
+
+			// No need to pass $plan here; nested objects should compute their own plans
+			$out[ $p->name ] = self::exportValue( $p, $value );
 		}
 		return $out;
 	}
 
 
-	private static function exportArray( serializeProp $p, array $a, cache\serializePlanCache $plan=null ): array {
+	private static function exportArray( serializeProp $p, array $a ): array {
 		// Flat map with minimal branching inside the loop
 		$out = [];
 		foreach( $a as $key => $value ) {
-			$out[ $key ] = self::exportValue( $p, $value, $plan );
+			$out[ $key ] = self::exportValue( $p, $value );
 		}
 		return $out;
 	}
 
-	private static function exportValue( serializeProp $p, mixed $value, cache\serializePlanCache $plan=null ): mixed {
-
-		if( \is_array( $value ) ) {
-			return self::exportArray( $p, $value, $plan );
+	private static function exportValue( serializeProp $p, mixed $value ): mixed {
+		// Fast path: null without cast
+		$castType = $p->castType;
+		if ( $value === null ) {
+			return null;
 		}
-		elseif( $p->castType instanceof jsonSerializeCastType ) {
-			if($p->castType==jsonSerializeCastType::string) {
+
+		// Arrays first (so we can recurse with the same prop config)
+		if ( \is_array( $value ) ) {
+			return self::exportArray( $p, $value );
+		}
+
+		// Property-level cast (avoids other instanceof checks for common scalar cases)
+		if ( $castType instanceof jsonSerializeCastType ) {
+			if($castType==jsonSerializeCastType::string) {
 				return (string)$value;
 			}
-			elseif($p->castType==jsonSerializeCastType::int) {
+			elseif($castType==jsonSerializeCastType::int) {
 				return (int)$value;
 			}
-			elseif($p->castType==jsonSerializeCastType::float) {
+			elseif($castType==jsonSerializeCastType::float) {
 				return (float)$value;
 			}
-			elseif($p->castType==jsonSerializeCastType::bool) {
+			elseif($castType==jsonSerializeCastType::bool) {
 				return (bool)$value;
 			}
 		}
-		elseif( $value===null || \is_scalar( $value ) ) {
+
+		// Scalars after cast-handling
+		if ( \is_scalar( $value ) ) {
 			return $value;
 		}
-		elseif( $value instanceof \DateTimeInterface ) {
-			return $value->format(  $p->dateFormat ?? DATE_ATOM  );
+
+		// Fast path: nested jsonDeserialize instances -> export directly (bypass hooks + function indirection)
+		// This avoids calling $value->jsonSerialize() which triggers _before/_after hooks on nested objects.
+		if ( $value instanceof self ) {
+			return self::exportObject( $value );
 		}
-		elseif( $value instanceof \UnitEnum ) {
+
+		// DateTime* formatting by pre-resolved format
+		if ( $value instanceof \DateTimeInterface ) {
+			return $value->format( $p->dateFormat ?? DATE_ATOM );
+		}
+
+		// Enums
+		if ( $value instanceof \UnitEnum ) {
 			return $value instanceof \BackedEnum ? $value->value : $value->name;
 		}
-/*		elseif( $value instanceof self ) {
-			return self::exportObject( $value, $plan );
-		}*/
-		elseif( $value instanceof \JsonSerializable ) {
+
+
+		// Generic JsonSerializable (3rd-party objects)
+		if ( $value instanceof \JsonSerializable ) {
 			/** @var mixed $serialized */
 			return $value->jsonSerialize();
 		}
-		elseif( \is_object( $value ) ) {
-			// If it's an object, we try to get its public properties as a last resort
-			return \get_object_vars( $value ); // last resort
-		}
 
+		// Last resort for unknown objects
+		if ( \is_object( $value ) ) {
+			return \get_object_vars( $value );
+		}
 
 		return $value;
 	}
