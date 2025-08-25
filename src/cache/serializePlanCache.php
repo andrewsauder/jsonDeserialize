@@ -5,6 +5,7 @@ namespace andrewsauder\jsonDeserialize\cache;
 use andrewsauder\jsonDeserialize\attributes\excludeJsonSerialize;
 use andrewsauder\jsonDeserialize\attributes\jsonSerializeCast;
 use andrewsauder\jsonDeserialize\attributes\jsonSerializeDateTimeFormat;
+use andrewsauder\jsonDeserialize\attributes\skipJsonSerializeProcessing;
 use andrewsauder\jsonDeserialize\jsonSerializeCastType;
 
 final class serializePlanCache {
@@ -47,6 +48,7 @@ final class serializePlanCache {
 
 		// 4) Build plan via reflection once.
 		$r     = new \ReflectionClass( $class );
+		$skipProc     = !empty($r->getAttributes(skipJsonSerializeProcessing::class, \ReflectionAttribute::IS_INSTANCEOF));
 		$props = [];
 		foreach( $r->getProperties( \ReflectionProperty::IS_PUBLIC ) as $rp ) {
 			if( self::hasAttribute( $rp, excludeJsonSerialize::class ) ) {
@@ -64,7 +66,7 @@ final class serializePlanCache {
 
 		}
 
-		$plan = new serializePlan( $props );
+		$plan = new serializePlan( $props, $skipProc );
 
 		// Persist: make parent dir then write a tiny PHP file returning the plan.
 		// In production you might skip disk if APCu is present.
@@ -134,9 +136,10 @@ final class serializePlanCache {
 				"new \\andrewsauder\\jsonDeserialize\\cache\\serializeProp($n, $df, $castType, static function(object \$o){return \$o->{$p->name} ?? null;})";
 		}
 		$propsList = \implode( ',', $propsPhp );
+		$skip      = $plan->skipProcessing ? 'true' : 'false';
 		return <<<PHP
 <?php
-return new \\andrewsauder\\jsonDeserialize\\cache\\serializePlan([$propsList]);
+return new \\andrewsauder\\jsonDeserialize\\cache\\serializePlan([$propsList], $skip);
 PHP;
 	}
 

@@ -3,6 +3,7 @@ namespace andrewsauder\jsonDeserialize;
 
 use andrewsauder\jsonDeserialize\attributes\excludeJsonDeserialize;
 use andrewsauder\jsonDeserialize\attributes\jsonSerializeDateTimeFormat;
+use andrewsauder\jsonDeserialize\cache\serializePlanCache;
 use andrewsauder\jsonDeserialize\cache\serializeProp;
 use andrewsauder\jsonDeserialize\exceptions\jsonDeserializeException;
 
@@ -69,6 +70,13 @@ abstract class jsonDeserialize
 	 * @throws \andrewsauder\jsonDeserialize\exceptions\jsonDeserializeException
 	 */
 	public function jsonSerialize(): array {
+		$plan = serializePlanCache::for($this);
+
+		// Bypass hooks and special processing entirely when marked to skip.
+		if ($plan->skipProcessing) {
+			return get_object_vars($this);
+		}
+
 		if( method_exists( $this, '_beforeJsonSerialize' ) ) {
 			$this->_beforeJsonSerialize();
 		}
@@ -81,7 +89,6 @@ abstract class jsonDeserialize
 
 		return $export;
 	}
-
 
 	/**
 	 * @throws \andrewsauder\jsonDeserialize\exceptions\jsonDeserializeException
