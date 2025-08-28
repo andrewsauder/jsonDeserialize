@@ -446,9 +446,9 @@ abstract class jsonDeserialize
 
 		// Fast path: nested jsonDeserialize instances -> export directly (bypass hooks + function indirection)
 		// This avoids calling $value->jsonSerialize() which triggers _before/_after hooks on nested objects.
-		if ( $value instanceof self ) {
+/*		if ( $value instanceof self ) {
 			return self::exportObject( $value );
-		}
+		}*/
 
 		// DateTime* formatting by pre-resolved format
 		if ( $value instanceof \DateTimeInterface ) {
@@ -460,9 +460,14 @@ abstract class jsonDeserialize
 			return $value instanceof \BackedEnum ? $value->value : $value->name;
 		}
 
-
 		// Generic JsonSerializable (3rd-party objects)
 		if ( $value instanceof \JsonSerializable ) {
+
+			// Force mongodb to string
+			if ( get_debug_type($value)=='MongoDB\BSON\ObjectId' ) {
+				return (string)$value;
+			}
+
 			/** @var mixed $serialized */
 			return $value->jsonSerialize();
 		}
