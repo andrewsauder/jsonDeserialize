@@ -314,9 +314,15 @@ abstract class jsonDeserialize
 				return $rPropertyClass->newInstance( $jsonValue );
 			}
 			catch( \ReflectionException $e ) {
+				if($allowsNull) {
+					return null;
+				}
 				throw new jsonDeserializeException( 'Failed to instantiate type ' . $propertyTypeName . ' for ' . $errorMessageDataPosition, 500, $e );
 			}
 			catch( \Exception $e ) {
+				if($allowsNull) {
+					return null;
+				}
 				throw new jsonDeserializeException( 'Invalid date time provided for ' . $errorMessageDataPosition, 400, $e );
 			}
 		}
