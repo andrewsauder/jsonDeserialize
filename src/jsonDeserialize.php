@@ -48,20 +48,25 @@ abstract class jsonDeserialize
 		if( is_array( $json ) ) {
 			$objects = [];
 			foreach( $json as $stdObject ) {
-				$objects[] = self::jsonDeserializeObject( $calledClassFqn, $stdObject );
+				$object = self::jsonDeserializeObject( $calledClassFqn, $stdObject );
+				if( method_exists( $object, '_afterJsonDeserialize' ) ) {
+					$object->_afterJsonDeserialize();
+				}
+				$objects[] = $object;
 			}
 
 			return $objects;
 		}
 		else {
 			$final = self::jsonDeserializeObject( $calledClassFqn, $json );
+
+			if( method_exists( $final, '_afterJsonDeserialize' ) ) {
+				$final->_afterJsonDeserialize();
+			}
+
+			return $final;
 		}
 
-		if( method_exists( $final, '_afterJsonDeserialize' ) ) {
-			$final->_afterJsonDeserialize();
-		}
-
-		return $final;
 	}
 
 
