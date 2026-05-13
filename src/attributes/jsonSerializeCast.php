@@ -6,7 +6,7 @@ use andrewsauder\jsonDeserialize\jsonSerializeCastType;
 use Attribute;
 
 #[Attribute( Attribute::TARGET_PROPERTY )]
-abstract class jsonSerializeCast {
+class jsonSerializeCast {
 
 	public jsonSerializeCastType $type;
 
