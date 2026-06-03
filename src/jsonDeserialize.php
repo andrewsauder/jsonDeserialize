@@ -168,7 +168,7 @@ abstract class jsonDeserialize
 			if( $propertyIsTypedArray ) {
 				$instance->$propertyName = [];
 				foreach( $json->$propertyName as $key => $jsonItem ) {
-					$instance->$propertyName[ $key ] = self::jsonDeserializeDataItem( $instance, $rProperty, $jsonItem, $rPropertyType->allowsNull() );
+					$instance->$propertyName[ $key ] = self::jsonDeserializeDataItem( $instance, $rProperty, $jsonItem, $rPropertyType->allowsNull(), true );
 				}
 			}
 			else {
@@ -181,15 +181,18 @@ abstract class jsonDeserialize
 
 
 	/**
-	 * @param mixed               $instance   Instance of the class we are building
-	 * @param \ReflectionProperty $rProperty  Reflection of the property we are working with
-	 * @param mixed               $jsonValue  Set the property equal to this value - provided from the json object
-	 * @param boolean             $allowsNull Can the property be set to null
+	 * @param mixed               $instance       Instance of the class we are building
+	 * @param \ReflectionProperty $rProperty      Reflection of the property we are working with
+	 * @param mixed               $jsonValue      Set the property equal to this value - provided from the json object
+	 * @param boolean             $allowsNull     Can the property be set to null
+	 * @param boolean             $isArrayElement True when populating a single element of a typed array. In that case
+	 *                                            $rProperty refers to the whole array property, so its current value is
+	 *                                            the array being built - never use it as an element default.
 	 *
 	 * @return mixed
 	 * @throws \andrewsauder\jsonDeserialize\exceptions\jsonDeserializeException
 	 */
-	private static function jsonDeserializeDataItem( mixed $instance, \ReflectionProperty $rProperty, mixed $jsonValue, bool $allowsNull ): mixed {
+	private static function jsonDeserializeDataItem( mixed $instance, \ReflectionProperty $rProperty, mixed $jsonValue, bool $allowsNull, bool $isArrayElement = false ): mixed {
 		$propertyName     = $rProperty->getName();
 		$rPropertyType    = $rProperty->getType();
 		$propertyTypeName = '';
@@ -270,6 +273,17 @@ abstract class jsonDeserialize
 
 		//no value provided, nulls allowed - use the default instantiated value
 		elseif( empty( $jsonValue ) && $allowsNull ) {
+			//for a typed array element, $rProperty is the array property itself, so its current value is the
+			//partially-built array - the correct element value is simply null
+			if( $isArrayElement ) {
+				return null;
+			}
+
+			//an uninitialized typed property has no readable default and getValue() would throw - treat as null
+			if( !$rProperty->isInitialized( $instance ) ) {
+				return null;
+			}
+
 			//return default value
 			return $rProperty->getValue( $instance );
 		}
