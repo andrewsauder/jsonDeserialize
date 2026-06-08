@@ -2,7 +2,6 @@
 namespace andrewsauder\jsonDeserialize;
 
 use andrewsauder\jsonDeserialize\attributes\excludeJsonDeserialize;
-use andrewsauder\jsonDeserialize\attributes\jsonSerializeDateTimeFormat;
 use andrewsauder\jsonDeserialize\cache\serializePlanCache;
 use andrewsauder\jsonDeserialize\cache\serializeProp;
 use andrewsauder\jsonDeserialize\exceptions\jsonDeserializeException;
@@ -12,13 +11,6 @@ abstract class jsonDeserialize
 	implements
 	\andrewsauder\jsonDeserialize\interfaces\jsonDeserialize,
 	\JsonSerializable {
-
-	private static function jsonDeserializeLog( string $message, array $context = [] ): void {
-		if( config::isDebugLogging() ) {
-			config::getDebugLogger()->debug( $message, $context );
-		}
-	}
-
 
 	/**
 	 * Initialize from outside object
@@ -112,12 +104,13 @@ abstract class jsonDeserialize
 		$rProperties = $rClass->getProperties();
 
 		//get the fields not defined on the class
-		foreach( $json as $key => $value ) {
+        $keys = array_keys( get_object_vars($json) );
+		foreach( $keys as $key ) {
 			if( !$rClass->hasProperty( $key ) ) {
 				if( config::isDebugLogging() && config::isLogClassMissingProperty() ) {
 					config::getDebugLogger()->debug( $calledClassFqn . '->' . $key . ' is not defined on the class. Value will be injected in class with standard JSON decode types.' );
 				}
-				$instance->$key = $value;
+				$instance->{$key} = $json->{$key};
 			}
 		}
 
@@ -151,7 +144,7 @@ abstract class jsonDeserialize
 			}
 
 			$rPropertyTypeName = '';
-			if( !( $rPropertyType instanceof \ReflectionUnionType ) ) {
+			if( $rPropertyType instanceof \ReflectionNamedType ) {
 				$rPropertyTypeName = $rPropertyType->getName();
 			}
 
@@ -196,7 +189,7 @@ abstract class jsonDeserialize
 		$propertyName     = $rProperty->getName();
 		$rPropertyType    = $rProperty->getType();
 		$propertyTypeName = '';
-		if( !( $rPropertyType instanceof \ReflectionUnionType ) ) {
+		if( $rPropertyType instanceof \ReflectionNamedType ) {
 			$propertyTypeName = $rPropertyType->getName();
 		}
 
@@ -272,7 +265,7 @@ abstract class jsonDeserialize
 		}
 
 		//no value provided, nulls allowed - use the default instantiated value
-		elseif( empty( $jsonValue ) && $allowsNull ) {
+		elseif( empty( $jsonValue ) ) {
 			//for a typed array element, $rProperty is the array property itself, so its current value is the
 			//partially-built array - the correct element value is simply null
 			if( $isArrayElement ) {
@@ -346,30 +339,6 @@ abstract class jsonDeserialize
 			}
 		}
 	}
-
-
-	/**
-	 * @param \ReflectionProperty $rProperty
-	 * @param mixed               $value
-	 *
-	 * @return mixed
-	 */
-	private function jsonSerializeDataItem( \ReflectionProperty $rProperty, mixed $value ): mixed {
-		if( \andrewsauder\jsonDeserialize\cache::getClassExists( '\MongoDB\BSON\ObjectId' ) && $value instanceof \MongoDB\BSON\ObjectId ) {
-			return (string)$value;
-		}
-		elseif( $value instanceof \DateTimeInterface ) {
-			$dateTimeFormatAttributes = $rProperty->getAttributes( jsonSerializeDateTimeFormat::class );
-			if(count($dateTimeFormatAttributes)>0) {
-				$dateTimeFormatAttributeInstance = $dateTimeFormatAttributes[0]->newInstance();
-				return $value->format( $dateTimeFormatAttributeInstance->datetimeFormat );
-			}
-			return $value->format( DATE_ATOM );
-		}
-
-		return $value;
-	}
-
 
 	private static function classNameToFqn( $className ): string {
 		$className = ltrim( $className, '\\' );
@@ -493,7 +462,6 @@ abstract class jsonDeserialize
 				return (string)$value;
 			}
 
-			/** @var mixed $serialized */
 			return $value->jsonSerialize();
 		}
 

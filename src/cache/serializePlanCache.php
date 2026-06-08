@@ -14,7 +14,7 @@ final class serializePlanCache {
 	private static array $local = [];
 
 
-	public static function for( object|string $objOrClass ): SerializePlan {
+	public static function for( object|string $objOrClass ): serializePlan {
 		$class = \is_object( $objOrClass ) ? $objOrClass::class : $objOrClass;
 
 		// 1) Local (request/process) cache hit?
@@ -27,7 +27,7 @@ final class serializePlanCache {
 		if( \function_exists( 'apcu_fetch' ) ) {
 			$planPlan = \apcu_fetch( $key );
 			$plan = eval( str_replace( '<?php', '', $planPlan) );
-			if( $plan instanceof SerializePlan ) {
+			if( $plan instanceof serializePlan ) {
 				return self::$local[ $class ] = $plan;
 			}
 		}
@@ -35,9 +35,9 @@ final class serializePlanCache {
 		// 3) Disk cache (optional). Uses a PHP-returning file so opcache can cache it.
 		$diskKey = \sys_get_temp_dir() . '/jsonDeserialize-cache/' . \md5( $key ) . '.php';
 		if( \is_file( $diskKey ) ) {
-			/** @var SerializePlan $plan */
+			/** @var serializePlan $plan */
 			$plan = include $diskKey;
-			if( $plan instanceof SerializePlan ) {
+			if( $plan instanceof serializePlan ) {
 				self::$local[ $class ] = $plan;
 				if( \function_exists( 'apcu_store' ) ) {
 					\apcu_store( $key, self::exportPlanAsPhp($plan) );
@@ -125,7 +125,7 @@ final class serializePlanCache {
 	}
 
 
-	private static function exportPlanAsPhp( SerializePlan $plan ): string {
+	private static function exportPlanAsPhp( serializePlan $plan ): string {
 		// Because closures can’t be serialized, we emit code that rebuilds them.
 		$propsPhp = [];
 		foreach( $plan->props as $p ) {
