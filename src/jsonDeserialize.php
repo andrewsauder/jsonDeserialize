@@ -377,7 +377,7 @@ abstract class jsonDeserialize
 
 
 	/** @internal plan-driven export */
-	private static function exportObject( object $obj, cache\serializePlanCache $plan=null ): array {
+	private static function exportObject( object $obj, ?cache\serializePlanCache $plan=null ): array {
 		if($plan===null) {
 			// If no plan is provided, we create it
 			$plan = cache\serializePlanCache::for( $obj );
